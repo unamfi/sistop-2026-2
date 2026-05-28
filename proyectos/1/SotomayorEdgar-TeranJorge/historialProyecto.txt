@@ -1,0 +1,53 @@
+commit d26071efe02af687b1dc9dad812a98bad656330e
+Author: ToteTeran <jteran19701971@gmail.com>
+Date:   Sun May 17 23:34:46 2026 -0600
+
+    Agregamos prueba1.txt para probar copia hacia FiUnamfs
+
+commit 28fcfc5669089dd9b2923e2e8de8d1e23ac2053d
+Author: ToteTeran <jteran19701971@gmail.com>
+Date:   Sun May 17 23:31:17 2026 -0600
+
+    Se agrega documentación del proyecto. Incluye historial de versiones, problemas a los cuales nos enfrentamos y cómo los solucionamos.
+
+commit d0b4da7bd8028c40a8076e14a617f9b3df5b4ab1
+Author: ToteTeran <jteran19701971@gmail.com>
+Date:   Sun May 17 23:29:22 2026 -0600
+
+    main.py pasa a ser el menú que dependiendo la opción ingresada va llamando a la respectiva función de la clase FiUnamfs. Se agrega también iniciar_logger() y el registro de operaciones de cada funcion (copiar, eliminar y copiar hacia FIUnamfs)
+
+commit c46efdac4b70bc960567a2f920ce9412478ed2ea
+Author: ToteTeran <jteran19701971@gmail.com>
+Date:   Sun May 17 23:25:37 2026 -0600
+
+    Se agrega threads.py para los hilos. Se tendrá un hilo principal y después un logger para registrar las operaciones automaticamente
+
+commit 482e71479e54ed665feff0addfd657affbfcedf5
+Author: ToteTeran <jteran19701971@gmail.com>
+Date:   Sun May 17 23:22:51 2026 -0600
+
+    Se agrega a la clase FiUnamFs los metodos o funciones de buscar_siguiente_cluster_libre y buscar_entrada_vacia
+
+commit c9c7e05c5de4ff617e0333327e9c1b95d0ef172e
+Author: ToteTeran <jteran19701971@gmail.com>
+Date:   Sun May 17 23:21:22 2026 -0600
+
+    Se agrega fiunamfs.py, el cual tiene la clase con los métodos para listar, mostrar, copar y eliminar
+
+commit 59b1ab471d8c7fa50405fc2ea71c23321b1ea347
+Author: ToteTeran <jteran19701971@gmail.com>
+Date:   Sun May 17 23:14:23 2026 -0600
+
+    Código para extraer los archivos y verificar que se pueden leer correctamente. Se agrega input para que usuario indique el archivo a extraer
+
+commit 2ed0e6c54c8d8798f448bac775ef4fb518063c8c
+Author: ToteTeran <jteran19701971@gmail.com>
+Date:   Sun May 17 23:08:02 2026 -0600
+
+    Modificación para listar los archivos del directorio
+
+commit faab7f1730bb14e926e04b83bd13090c4c4a3585
+Author: ToteTeran <jteran19701971@gmail.com>
+Date:   Sun May 17 22:48:18 2026 -0600
+
+    Probamos que se pueda leer el archivo fiunamfs.img

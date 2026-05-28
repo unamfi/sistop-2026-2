@@ -1,0 +1,423 @@
+#+TITLE: Proyecto 1 — Micro-sistema de archivos FiUnamFS
+#+AUTHOR: Samuel Cruz
+#+DATE: 2026-05
+#+OPTIONS: toc:2 num:t
+
+* Autores
+
+| Nombre      | Rol                                       |
+|-------------+-------------------------------------------|
+| Samuel Cruz | Diseño, implementación y documentación    |
+
+* Resumen
+
+Este proyecto implementa una herramienta de línea de comandos para
+manipular imágenes del sistema de archivos =FiUnamFS= (versión =26-2=),
+un sistema plano de asignación contigua que cabe en una imagen de
+=1440 KB= (equivalente a un disquete de 1.44 MB).
+
+El programa cubre las cinco metas planteadas por la asignatura:
+
+1. Listar el contenido del directorio.
+2. Extraer (copiar de FiUnamFS al equipo local) un archivo.
+3. Insertar (copiar del equipo local a FiUnamFS) un archivo.
+4. Eliminar (borrado lógico) un archivo.
+5. Ejecutar cada operación en un hilo independiente, coordinando los
+   accesos a la imagen mediante un mecanismo de exclusión mutua.
+
+Adicionalmente, ofrece dos interfaces para invocar las operaciones:
+
+- *CLI con subcomandos* (=listar=, =extraer=, =insertar=, =eliminar=)
+  y un *menú interactivo* (=menu=) para usuarios que prefieren un flujo
+  guiado.
+- *Montaje FUSE* (=mount=): la imagen se monta como un directorio
+  ordinario del sistema y se manipula con =ls=, =cp=, =cat=, =rm= como
+  si fuera cualquier otro directorio.
+
+* Requisitos del entorno
+
+** Lenguaje
+
+- *Python 3.10* o superior (se utiliza =typing.Optional= y =list[...]=
+  con sintaxis moderna; la salida formateada usa f-strings).
+
+** Dependencias
+
+*Para el CLI y el menú interactivo* no se requiere ninguna dependencia
+externa; el programa usa únicamente la biblioteca estándar de CPython:
+
+| Módulo        | Uso                                                                |
+|---------------+--------------------------------------------------------------------|
+| =argparse=    | Definición de subcomandos del CLI                                  |
+| =math=        | =math.ceil()= para calcular clústeres ocupados por un archivo      |
+| =os=          | Manejo de rutas y verificación de la imagen y los archivos locales |
+| =struct=      | =pack_into= / =unpack_from= en formato =<I= (little-endian uint32) |
+| =sys=         | Códigos de salida del proceso                                      |
+| =threading=   | =Thread= para las operaciones y =Lock= para la exclusión mutua     |
+| =dataclasses= | Definición concisa de =EntradaDirectorio=                          |
+| =datetime=    | Conversión de cadenas =AAAAMMDDHHmmss= y sello de tiempo actual    |
+
+*Para el modo =mount= (FUSE)* se necesita además:
+
+| Componente          | Versión sugerida | Instalación                              |
+|---------------------+------------------+------------------------------------------|
+| =libfuse=           | ≥ 2.9            | Debian/Ubuntu: =sudo apt-get install fuse=  |
+|                     |                  | Arch Linux: =sudo pacman -S fuse2=          |
+|                     |                  | macOS: macFUSE — https://osxfuse.github.io/ |
+| =fusepy= (Python)   | 3.0.1            | =pip install fusepy=                        |
+
+El modo =mount= está aislado: el =import fuse= se hace dentro de
+=_montar_fuse= y se atrapa el =ImportError=, así que la ausencia de
+estas dependencias no afecta a los demás subcomandos.
+
+** Compilación
+
+Python es interpretado: no hay paso de compilación. El programa
+consiste en un único archivo, =proyecto.py=, que se ejecuta
+directamente con el intérprete.
+
+* Estructura del repositorio
+
+#+begin_example
+proyectos/1/CruzSamuel/
+├── .gitignore        Excluye __pycache__, *.pyc y archivos temporales
+├── README.org        Este documento
+└── proyecto.py       Implementación completa del CLI y la lógica de FiUnamFS
+#+end_example
+
+El archivo =fiunamfs.img= con el sistema de archivos de muestra se
+encuentra un nivel arriba, en =proyectos/1/fiunamfs.img=, tal como lo
+publicó el profesor.
+
+* Uso
+
+Todas las invocaciones reciben primero la ruta a la imagen y luego un
+subcomando. Si se omite el subcomando, el programa entra en modo
+interactivo.
+
+** Ayuda
+
+#+begin_src shell
+python3 proyecto.py --help
+python3 proyecto.py ../fiunamfs.img extraer --help
+#+end_src
+
+** Listar el contenido del directorio
+
+#+begin_src shell
+python3 proyecto.py ../fiunamfs.img listar
+#+end_src
+
+Salida:
+
+#+begin_example
+Nombre               Tamaño  Clúster  Creación             Modificación
+--------------------------------------------------------------------------------
+README.org           31,094       10  2026-05-12 21:32:40  2026-05-12 21:32:40
+logo.png            126,423       26  2026-05-12 21:32:40  2026-05-12 21:32:40
+mensaje.jpg         180,808       88  2026-05-12 21:32:40  2026-05-12 21:32:40
+--------------------------------------------------------------------------------
+Total: 3 archivo(s)
+#+end_example
+
+** Extraer un archivo al equipo local
+
+#+begin_src shell
+python3 proyecto.py ../fiunamfs.img extraer README.org ./readme_extraido.org
+#+end_src
+
+Si =destino= es un directorio existente, el archivo se guarda con su
+nombre original dentro de él.
+
+** Insertar un archivo del equipo local
+
+#+begin_src shell
+echo "Hola FiUnamFS" > saludo.txt
+python3 proyecto.py ../fiunamfs.img insertar saludo.txt
+#+end_src
+
+** Eliminar un archivo (borrado lógico)
+
+#+begin_src shell
+python3 proyecto.py ../fiunamfs.img eliminar saludo.txt
+#+end_src
+
+** Modo interactivo
+
+Sin subcomando, o con el subcomando =menu=, el programa muestra un
+menú numerado y solicita los datos necesarios para cada operación.
+
+#+begin_src shell
+python3 proyecto.py ../fiunamfs.img
+#+end_src
+
+#+begin_example
+======================================================
+            FiUnamFS — modo interactivo
+======================================================
+  1) Listar archivos
+  2) Extraer archivo  (FiUnamFS → equipo local)
+  3) Insertar archivo (equipo local → FiUnamFS)
+  4) Eliminar archivo
+  5) Salir
+
+Elige una opción [1-5]:
+#+end_example
+
+** Modo =mount= (FUSE): la imagen como un directorio del sistema
+
+Una vez instalados =libfuse= y =fusepy= (ver /Dependencias/), la
+imagen puede manipularse con cualquier herramienta del sistema:
+
+#+begin_src shell
+mkdir /tmp/fiunamfs
+python3 proyecto.py ../fiunamfs.img mount /tmp/fiunamfs &
+#+end_src
+
+A partir de ese momento, =/tmp/fiunamfs= se comporta como un
+directorio normal:
+
+#+begin_src shell
+# Listar
+ls -l /tmp/fiunamfs/
+
+# Extraer
+cp /tmp/fiunamfs/README.org ~/copia.org
+
+# Insertar
+cp ~/mi_archivo.txt /tmp/fiunamfs/
+
+# Eliminar
+rm /tmp/fiunamfs/mi_archivo.txt
+#+end_src
+
+Para desmontar:
+
+#+begin_src shell
+fusermount -u /tmp/fiunamfs   # Linux
+umount /tmp/fiunamfs          # macOS
+#+end_src
+
+*Notas del modelo FUSE.* La escritura se hace en dos fases: =write=
+acumula los bytes en un buffer en memoria asociado al archivo, y
+=release= persiste el buffer completo invocando =_escribir_en_fs=.
+Esto se debe a que FiUnamFS usa /asignación contigua/: no podemos
+elegir el clúster inicial hasta conocer el tamaño total del archivo.
+Por la misma razón, =truncate= solo se acepta sobre archivos en buffer
+(aún no persistidos); modificar el tamaño de un archivo ya escrito
+requeriría reubicarlo y queda fuera del alcance de la entrega.
+
+* Layout del sistema de archivos
+
+#+begin_example
++----------------+------------------------------+--------------------------------+
+|   Clúster 0    |     Clústeres 1 - 8          |    Clústeres 9 - 719           |
+|  Superbloque   |     Directorio plano         |    Área de datos               |
+|  (2 048 B)     |  (8 × 2 048 = 16 384 B)      |  (711 × 2 048 = 1 456 128 B)   |
++----------------+------------------------------+--------------------------------+
+#+end_example
+
+** Superbloque (clúster 0)
+
+| Bytes  | Campo                                                 |
+|--------+-------------------------------------------------------|
+| 0-3    | Cuatro NUL (=0x00=) reservados                        |
+| 5-12   | Firma del sistema de archivos: =FiUnamFS=             |
+| 14-17  | Versión: =26-2= (cadena, no entero)                   |
+| 20-34  | Etiqueta del volumen                                  |
+| 40-43  | Tamaño del clúster en bytes (uint32 LE)               |
+| 50-53  | Número de clústeres del directorio (uint32 LE)        |
+| 60-63  | Número total de clústeres del volumen (uint32 LE)     |
+
+** Entrada de directorio (64 bytes)
+
+| Bytes  | Campo                                                 |
+|--------+-------------------------------------------------------|
+| 0      | Tipo: =-= (archivo) o =/= (entrada libre)             |
+| 1-14   | Nombre del archivo (ASCII, relleno con espacios/NUL)  |
+| 16-19  | Tamaño en bytes (uint32 LE)                           |
+| 20-23  | Clúster inicial (uint32 LE)                           |
+| 30-43  | Fecha de creación =AAAAMMDDHHmmss=                    |
+| 50-63  | Fecha de modificación =AAAAMMDDHHmmss=                |
+
+Las entradas no utilizadas se marcan con el tipo =/= y el nombre
+relleno con =#=. Se respeta esta convención al insertar (se busca
+la primera entrada libre) y al eliminar (se restablece el tipo a
+=/= y el nombre a =#####...=).
+
+** Área de datos
+
+Asignación contigua: el archivo cuyo clúster inicial es =N= y cuyo
+tamaño es =T= ocupa los clústeres =N..N + ⌈T / 2048⌉ - 1=. La función
+=_primer_hueco_contiguo= aplica un algoritmo /first-fit/ sobre los
+clústeres libres del área de datos.
+
+* Estrategia de desarrollo
+
+El proyecto se construyó incrementalmente, manteniendo en cada etapa
+un programa que compila, se ejecuta y produce salida útil:
+
+1. *Esqueleto y superbloque.* Se definieron las constantes de layout
+   (tamaño de sector, clúster y total de clústeres) y la primera
+   validación: comprobar firma =FiUnamFS= y versión =26-2=.
+2. *Lectura del directorio.* Se modeló =EntradaDirectorio= con una
+   =dataclass= y se implementó el recorrido del directorio en bloques
+   de 64 bytes, descartando entradas marcadas como libres.
+3. *Listado tabular.* Salida ordenada por columnas con manejo
+   tolerante de fechas inválidas (=None= → =—=).
+4. *Extracción.* =cluster_inicial * 2048= como offset; se leen
+   exactamente =tamanio= bytes, sin incluir el relleno del clúster.
+5. *Inserción.* /First-fit/ para buscar el hueco contiguo, escritura
+   del contenido + zero-fill del último clúster + grabado de los 64
+   bytes de la entrada en el primer hueco libre del directorio.
+6. *Borrado lógico.* Sobreescritura del byte de tipo (=/=) y del
+   campo de nombre (=#=) sin alterar los datos.
+7. *Concurrencia.* =threading.Lock= global y wrapper
+   =_ejecutar_en_hilo= que crea, espera y propaga excepciones del
+   hilo trabajador.
+8. *Interfaz.* CLI con =argparse= + subcomandos y un modo interactivo
+   por menú para usuarios que prefieren un flujo guiado.
+9. *Montaje FUSE.* Capa final que expone el FiUnamFS como un
+   directorio del sistema operativo. Reusa =leer_directorio=,
+   =_escribir_en_fs= y la lógica de borrado, así que cuando un proceso
+   ajeno escribe vía =cp= sigue dentro del mismo =cerrojo= que el CLI.
+
+* Sincronización entre hilos
+
+** Recurso compartido
+
+El único recurso compartido es la imagen de disco (=ruta_imagen=).
+Tanto las lecturas (=listar=, =extraer=) como las escrituras
+(=insertar=, =eliminar=) la abren y la modifican; sin coordinación,
+dos hilos pueden producir estados inconsistentes.
+
+** Mecanismo: =threading.Lock=
+
+Un único =Lock= global (=cerrojo=, definido a nivel de módulo)
+implementa la exclusión mutua binaria. Cada operación delimita su
+sección crítica con el manejador =with cerrojo:=, que adquiere el
+lock al entrar y lo libera automáticamente al salir — incluso si se
+lanza una excepción.
+
+#+begin_src python
+cerrojo = threading.Lock()
+
+def insertar(ruta, ruta_local):
+    ...
+    with cerrojo:
+        entradas = leer_directorio(ruta)
+        ...escritura coordinada de datos y metadatos...
+#+end_src
+
+** Sección crítica por operación
+
+| Operación  | Acceso     | Sección crítica                                          |
+|------------+------------+----------------------------------------------------------|
+| =listar=   | Lectura    | Lectura del directorio                                   |
+| =extraer=  | Lectura    | Lectura del directorio + lectura del área de datos       |
+| =insertar= | Escritura  | Lectura del directorio + escritura de datos y metadatos  |
+| =eliminar= | Escritura  | Búsqueda de entrada + sobreescritura de tipo y nombre    |
+
+** Ejecución concurrente
+
+Cada operación se invoca a través de =_ejecutar_en_hilo(funcion,
+*args)=, que crea un =threading.Thread= con la función como objetivo,
+arranca el hilo, espera su terminación con =join()= y propaga al hilo
+principal cualquier excepción que el trabajador haya lanzado.
+
+#+begin_example
+Hilo A (insertar)         cerrojo           Hilo B (eliminar)
+       |                      |                        |
+       |--- acquire() ------->|                        |
+       |    [ADQUIRIDO]       |                        |
+       |    Lee directorio    |                        |
+       |    Escribe datos     |                        |
+       |    Escribe metadatos |                        |
+       |                      |<--- acquire() ---------|
+       |                      |     [BLOQUEADO]        |
+       |--- release() ------->|                        |
+       |                      |     [ADQUIRIDO]        |
+       |                      |     Borra entrada      |
+       |                      |<--- release() ---------|
+#+end_example
+
+** Condiciones de carrera evitadas
+
+Sin el =Lock=, las siguientes secuencias serían posibles:
+
+1. *Dos inserciones simultáneas* podrían leer el mismo "primer hueco
+   libre" del directorio y escribir ambas entradas en la misma
+   posición, perdiendo una de las dos.
+2. *Inserción y eliminación cruzadas* podrían dejar el directorio en
+   un estado intermedio donde la nueva entrada apunte al espacio que
+   otro hilo está liberando.
+3. *Lectura concurrente con escritura* podría observar un directorio
+   parcialmente actualizado (por ejemplo, con la nueva fecha pero el
+   nombre viejo).
+
+El =Lock= serializa estas operaciones a nivel de imagen, garantizando
+que cada hilo vea un estado consistente de principio a fin.
+
+* Validaciones
+
+El programa rechaza con un mensaje claro las siguientes situaciones:
+
+- La imagen no existe, no tiene =1 474 560= bytes, no lleva la firma
+  =FiUnamFS= o no es de la versión =26-2=.
+- Se intenta extraer o eliminar un archivo que no existe.
+- Se intenta insertar un archivo vacío, con nombre que excede 14
+  caracteres, con caracteres fuera de ASCII de 7 bits, o cuyo
+  nombre ya existe en el directorio.
+- El área de datos no tiene espacio contiguo suficiente para el
+  archivo solicitado.
+- El directorio está lleno.
+
+* Fuentes consultadas
+
+** Especificación y materiales del curso
+
+- Wolf, G. (2026). /Proyecto 1: micro sistema de archivos multihilos./
+  Facultad de Ingeniería, UNAM. Planteamiento, especificación binaria
+  del =FiUnamFS= e imagen de muestra =fiunamfs.img= publicada en el
+  repositorio del curso =sistop-2026-2=.
+- Silberschatz, A., Galvin, P. B., Gagne, G. (2018). /Operating System
+  Concepts/ (10ª ed.). Wiley. Capítulos sobre asignación contigua,
+  sincronización entre hilos y exclusión mutua.
+- Tanenbaum, A. S., Bos, H. (2014). /Modern Operating Systems/ (4ª ed.).
+  Pearson. Para la discusión de directorios planos y condiciones de
+  carrera en sistemas de archivos.
+
+** Documentación de Python (biblioteca estándar)
+
+- =struct= — Interpret bytes as packed binary data.
+  [[https://docs.python.org/3/library/struct.html]]
+  Consultado especialmente para entender el formato =<I= (little-endian
+  unsigned 32-bit) y las funciones =pack_into= / =unpack_from=.
+- =threading= — Thread-based parallelism.
+  [[https://docs.python.org/3/library/threading.html]]
+  Referencia de =Lock=, =Thread=, =Thread.join= y semántica de
+  =with lock:= como manejador de contexto.
+- =argparse= — Parser for command-line options.
+  [[https://docs.python.org/3/library/argparse.html]]
+  Patrón de subcomandos con =add_subparsers=.
+- =dataclasses= — Data classes.
+  [[https://docs.python.org/3/library/dataclasses.html]]
+- =datetime= — Basic date and time types.
+  [[https://docs.python.org/3/library/datetime.html]]
+  Formato =%Y%m%d%H%M%S= para =AAAAMMDDHHmmss=.
+
+** Conceptos teóricos verificados en línea
+
+- /First-fit/ allocation algorithm — descripción general en
+  [[https://en.wikipedia.org/wiki/Memory_management#First-fit]].
+- Mutex y locks en Python — discusión sobre el GIL y la verdadera
+  exclusión mutua que provee =threading.Lock=:
+  [[https://docs.python.org/3/library/threading.html#lock-objects]].
+- Endianness y representación little-endian — referencia rápida en
+  [[https://en.wikipedia.org/wiki/Endianness]].
+
+* Licencia
+
+Trabajo académico para la asignatura de Sistemas Operativos,
+Facultad de Ingeniería, UNAM, semestre 2026-2. Se publica bajo los
+términos del repositorio del curso (CC BY 4.0).

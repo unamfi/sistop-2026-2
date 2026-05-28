@@ -1,0 +1,14 @@
+# Imágenes de disco
+*.img
+*.image
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db

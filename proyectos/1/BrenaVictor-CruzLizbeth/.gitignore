@@ -1,0 +1,13 @@
+# Cache de ejecución de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.org
+
+# Directorio local de montaje de FUSE
+montaje/
+
+# Archivos de bitácora o temporales de edición de texto
+*.swp
+*.log
+.DS_Store

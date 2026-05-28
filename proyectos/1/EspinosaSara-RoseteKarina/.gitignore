@@ -1,0 +1,21 @@
+# Ejecutables
+*.exe
+*.out
+
+# Archivos objeto
+*.o
+
+# Archivos temporales
+*.tmp
+
+# VSCode
+.vscode/
+
+# Carpeta de compilación
+output/
+
+# Linux
+*.so
+
+# Windows
+*.dll

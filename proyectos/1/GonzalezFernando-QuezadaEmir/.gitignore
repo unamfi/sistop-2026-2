@@ -1,0 +1,6 @@
+__pycache__
+*.txt
+fiunamfs.img
+*.png
+*.jpg
+venv/

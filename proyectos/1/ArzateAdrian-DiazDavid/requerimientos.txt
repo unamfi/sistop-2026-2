@@ -1,0 +1,3 @@
+# Dependencia para módulo FUSE (Uso transparente mediante sistema de archivos en espacio de usuario)
+# Nota: Requiere tener instalado el paquete de desarrollo de FUSE en el sistema operativo host.
+fusepy==3.0.1

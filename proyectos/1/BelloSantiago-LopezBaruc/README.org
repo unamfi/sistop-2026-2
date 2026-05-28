@@ -1,0 +1,60 @@
+#+TITLE: Proyecto: Manejador del Sistema de Archivos FiUnamFS
+#+AUTHOR: Bello Sánchez Santiago Arath y López Romero David Baruc
+#+LANGUAGE: es
+#+OPTIONS: toc:nil
+
+* 1. Descripción del Proyecto
+Este proyecto implementa un simulador de consola tipo terminal para interactuar con el sistema de archivos personalizado *FiUnamFS*. Permite montar una imagen de este sistema, listar su contenido, copiar archivos desde y hacia la computadora local del usuario, y eliminar archivos de manera interna. Además, utiliza un enfoque concurrente (hilos) para optimizar las operaciones de lectura y el escaneo del mapeo de directorios.
+
+* 2. Entorno y Dependencias
+De acuerdo con los requerimientos del entorno de desarrollo y ejecución, las especificaciones son las siguientes:
+
+- *Lenguaje de Programación*: Escrito en *Python 3* (Implementación estándar CPython). Se recomienda utilizar una versión mayor o igual a *Python 3.8* (debido al uso de f-strings y características modernas de la biblioteca de hilos).
+- *Dependencias y Módulos*: El proyecto fue desarrollado utilizando *exclusivamente la biblioteca estándar de Python*. **No es necesario instalar dependencias de terceros** (no se requiere =pip install=). 
+- *Módulos integrados empleados*:
+  - =os= y =sys= (Interacción con rutas y argumentos del sistema).
+  - =struct= (Desempaquetado de secuencias de bytes del sistema de archivos).
+  - =threading= (Manejo de hilos para procesamiento concurrente).
+  - =math= (Cálculos de clústeres y tamaños).
+  - =datetime= (Manejo y formateo de fechas de creación/modificación).
+- *Entorno de ejecución*: El programa está diseñado para ejecutarse desde una terminal o emulador de consola estándar. Es compatible de forma multiplataforma (macOS, Linux, Windows).
+
+* 3. Estructura del Código
+- *FUSE.py*: Funciona como el punto de entrada y la interfaz de usuario. Inicia una consola interactiva que procesa los comandos introducidos por el usuario y realiza las llamadas correspondientes al backend del sistema de archivos.
+- *P_sistop2026_2.py*: Contiene la lógica central del sistema. Define las clases =File= (metadatos y extracción de datos multihilo) y =FiUnamFS= (gestor del disco, validación de integridad en 3 capas, y lectura/escritura binaria de la imagen =.img=).
+
+* 4. Instrucciones de Ejecución
+Para montar el sistema de archivos y acceder a la terminal interactiva, ejecute el siguiente comando asegurándose de proporcionar la ruta correcta hacia el sistema de archivos =FiUnamFs.img=:
+
+#+BEGIN_SRC bash
+python FUSE.py <ruta_de_la_imagen_fiunamfs.img>
+#+END_SRC
+
+* 5. Comandos Disponibles en FiUnamFS
+Una vez dentro de la interfaz interactiva (=FiUnamFS $=), están disponibles los siguientes comandos:
+
+- =ls= :: Escanea y lista todos los archivos presentes en el directorio raíz de FiUnamFS, mostrando su nombre y tamaño en bytes.
+- =cp <origen> <destino>= :: Copia archivos entre el sistema base y FiUnamFS.
+  - *Hacia tu equipo:* =cp <nombre_archivo_en_FiUnamFS> <ruta_directorio_local>=
+  - *Hacia FiUnamFS:* =cp <ruta_archivo_local> <nombre_nuevo_en_FiUnamFS>=
+- =rm <nombre_archivo>= :: Realiza la eliminación lógica del archivo dentro del sistema FiUnamFS (marca el registro de bytes con una diagonal =/= y =#=).
+- =exit= / =quit= :: Desmonta el sistema y termina la ejecución del programa de forma segura.
+
+
+** Inicialización y Validación del Sistema (Capas 1, 2 y 3)
+[[file:INICIALIZANDO PROGRAMA Y VALIDACION DEL SISTEMA DE ARCHIVOS..png]]
+
+** Listado de Directorios (Comando =ls=)
+[[file:USO DE COMANDO 'LS'.png]]
+
+** Copia de archivos: Computadora hacia FiUnamFS
+[[file:USO DE 'CP' ARCHIVO DE MI COMPUTADORA FIUNAMFS.png]]
+
+** Copia de archivos: FiUnamFS hacia la Computadora
+[[file:USO DE 'CP' DE FIUNAMFS A COMPUTADORA.png]]
+
+** Visualización de los archivos extraídos exitosamente en la computadora local
+[[file:ARCHIVOS DE FIUNAMFS EN PC.png]]
+
+** Eliminación de archivos (Comando =rm=)
+[[file:USO DE 'RM' ELIMINACION DEL ARCHIVO 'IMG_1757'.png]]

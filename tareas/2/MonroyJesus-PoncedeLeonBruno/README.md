@@ -69,7 +69,7 @@ Al ejecutar el programa, la terminal se limpia y muestra dos secciones principal
 
 1. **Representación Gráfica (Arriba):**
 
-![Imagen del Programa](img/imgT2.jpeg)
+
 
 2. **Registro de Eventos (Abajo):**
 

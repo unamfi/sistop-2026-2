@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos temporales que pude generar al probar las operaciones
+*.tmp
+*.bak
+*.orig
+extraido_*

@@ -1,0 +1,252 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{top=2.5cm, bottom=2.5cm, left=3cm, right=3cm}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Configuración de colores para código fuente
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{backcolor}{rgb}{0.97,0.97,0.96}
+\definecolor{commentgreen}{rgb}{0.0,0.5,0.0}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.8}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolor},
+    commentstyle=\color{commentgreen},
+    keywordstyle=\color{keywordblue},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    numberstyle=\tiny\color{codegray},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4
+}
+\lstset{style=mystyle}
+
+\begin{document}
+
+% --- PORTADA ---
+\begin{center}
+    \large\textbf{UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO} \\[0.2cm]
+    \large\textbf{FACULTAD DE INGENIERÍA} \\[0.2cm]
+    \normalsize\textbf{INGENIERÍA EN COMPUTACIÓN} \\[2cm]
+    
+    \large\textbf{Proyecto:} \\[0.3cm]
+    \huge\textbf{Simulador del Sistema de Archivos FiUnamFS con Interfaz de Terminal FUSE} \\[3cm]
+\end{center}
+
+\begin{flushleft}
+    \large
+    \textbf{Alumnos:} \\
+    $\bullet$ Bello Sánchez Santiago Arath \\
+    $\bullet$ López Romero David Baruc \\[0.6cm]
+    \textbf{Materia:} Sistemas Operativos \\
+    \textbf{Grupo:} 7 \\[0.6cm]
+    \textbf{Fecha de entrega:} 21 de mayo 2026
+\end{flushleft}
+
+\newpage
+
+% --- CONTENIDO ---
+
+\section{Objetivo del Proyecto}
+\begin{itemize}
+    \item Desarrollar un simulador interactivo para el sistema de archivos de la Facultad de Ingeniería (\texttt{FiUnamFS}), capaz de realizar operaciones fundamentales de manipulación de almacenamiento virtual a nivel binario.
+    \item Implementar una interfaz de línea de comandos inspirada en el comportamiento de un sistema de archivos en espacio de usuario (\texttt{FUSE}) que permita listar, transferir y eliminar archivos del cluster simulado de manera concurrente y segura.
+\end{itemize}
+
+\section{Primer Acercamiento (Análisis del Problema)}
+\begin{itemize}
+    \item \textbf{Simulación y Entorno:} El proyecto trabaja directamente manipulando un archivo binario de almacenamiento emulado que representa el disco rígido virtual bajo el formato \texttt{FiUnamFS}. 
+
+    Para poder realizar pruebas y validacion del siste,a, el entorno ya contiene inicialmente un conjunto de archivos preinstalados con propósitos en específico:
+    \begin{itemize}
+        \item \texttt{README.ORG}: Este archivo contiene todas las especificaciones y requerimientos técnicos del diseño del proyecto.
+        \item \texttt{logo.png}: Logotipo de la Facultad de Ingeniería.
+        \begin{figure}[h]
+            \centering
+            \includegraphics[width=0.25\linewidth]{logo.png}
+            \label{fig:placeholder}
+        \end{figure}
+        \item \texttt{mensaje.jpg}: Imagen emblemática de un gato para el software libre.
+        \begin{figure}[h]
+            \centering
+            \includegraphics[width=0.25\linewidth]{mensaje1.jpg}
+
+            \label{fig:placeholder}
+        \end{figure}
+    \end{itemize}
+    \item \textbf{Cálculos y Especificaciones Técnicas:} Dentro del sistema, cada bloque lógico o unidad de asignación se encuentran determinados por el tamaño del cluster, el cual es establecido por el software:
+    
+    \[
+    \text{Tamaño del Clúster} = 2048 \text{ bytes}
+    \]
+
+    Las posiciones físicas dentro del disco (\textit{byte offsets}) para la manipulación y lectura directa de datos estructurados se van a resolver de manera dinámica mediante la multiplicación del indice del cluster por la constante dimensional:
+    \[
+    \text{Posición Inicial (Bytes)} = \text{initial\_cluster} \times 2048
+    \]
+    
+    \item \textbf{Restricciones del Sistema:}  Las operaciones de persistencia e indexación se encuentran acotadas por los límites del directorio raíz mapeado internamente. Remover de manera física los registros no reubica el almacenamiento inmediatamente, sino que aplica máscaras binarias de invalidación sobre descriptores fijos.
+\end{itemize}
+
+\section{Solución Propuesta}
+La solución propuesta se divide en dos partes, la primera se encarga de la traducción binaria y la segunda es un bucle de eventos interactivo para cumplir las operaciones estándar del shell UNIX:
+
+\begin{itemize}
+    \item \textbf{Validación de Datos de Entrada:} El software implementa una rutina de parseo cronológico que recibe cadenas crudas de metadatos del sistema de archivos (\texttt{YYYYMMDDHHMMSS}) y las convierte mediante desgloses indexados en un formato de estampa temporal estandarizado ISO (\texttt{YYYY-MM-DD HH:MM:SS}).
+    \item \textbf{Operación de Lectura / Listado (\texttt{ls}):} Invoca el procedimiento interno de mapeo del directorio, itera sobre la colección dinámica \texttt{lista\_archivos} y renderiza en la terminal virtual el binomio de atributos conformado por el identificador nominal del archivo (\texttt{name}) junto con su peso exacto en bytes (\texttt{size}).
+    \item \textbf{Operación de Escritura / Inserción (\texttt{cp}):} Divide el flujo en dos direcciones complementarias: \texttt{copia\_TO\_MyPC} extrae la secuencia de bytes crudos desde los sectores lógicos asignados en el disco virtual hacia el sistema operativo anfitrión, mientras que \texttt{copia\_TO\_FiUnamFS} realiza el empaquetado inverso localizando bloques vacíos disponibles.
+    \item \textbf{Operación de Eliminación (\texttt{rm}):} Traduce el nombre del archivo a una dirección física binaria utilizando una estructura asociativa de metadatos. El programa se posiciona en el descriptor y escribe secuencialmente la firma de borrado físico del sistema consistente en los bytes lógicos \texttt{b'/' + b'\#' * 14}, liberando las llaves en las tablas dinámicas en memoria.
+\end{itemize}
+
+\section{Entorno y Dependencias}
+\begin{itemize}
+    \item \textbf{Lenguaje de Programación Utilizado:} Python 3. Se seleccionó por su eficiencia en el manejo de estructuras de datos, su tipado dinámico para la interacción con descriptores virtuales y su capacidad para controlar directamente punteros en archivos binarios.
+    \item \textbf{Módulos y Librerías Nativas:} 
+        \begin{itemize}
+            \item \texttt{os} y \texttt{sys}: Para interactuar con el entorno de ejecucion, administrar buffers y capturar de argumentos de arranque por consola.
+            \item \texttt{struct}: Desempaquetado y traducción de estructuras binarias de C/C++ en tipos lógicos de Python.
+            \item \texttt{threading}: Para la gestion de la concurrencia y aislamiento en la ejecución de hilos.
+            \item \texttt{math} y \texttt{datetime}: Para realizar cálculos sobre la geometría de los bloques y dar formato a las marcas de tiempo del sistema de archivos.
+        \end{itemize}
+    \item \textbf{Consideraciones de Ejecución y Configuración:} El sistema consta de dos módulos principales. El punto de entrada se localiza en \texttt{FUSE.py}. Para inicializar la consola interactiva se requiere pasar como parámetro obligatorio la ruta física de la imagen de almacenamiento en disco mediante el comando:
+    \begin{center}
+        \texttt{python FUSE.py <ruta\_sistemaArchivos>}
+    \end{center}
+\end{itemize}
+
+\section{Implementación (Arquitectura de Software)}
+La implementación está realizada bajo la paradigma de la Programación Orientada a Objetos (POO) y emplea una arquitectura modular:
+\begin{itemize}
+    \item \textbf{Clase \texttt{File}:} Modela y encapsula los metadatos d eun archivo indvidual. En ella se administran propiedades como tamaño de clúster, nombre del archivo, tamaño físico, coordenadas lógicas de inicio y flujos de lectura de contenido binario mediante métodos como \texttt{obtener\_contenido()}.
+    \item \textbf{Clase \texttt{FiUnamFS}:} Es el nucleo central que orquesta las operaciones de bajo nivel del simulador. Almacena en memoria diccionarios clave-valor como \texttt{mapDirectorio} y \texttt{archivos\_validos}, lo cual, permite la mutabilidad del almacenamiento virtual y facilita la ejecucion de rutinas como \texttt{eliminar\_archivo()}.
+    \begin{lstlisting}[language=Python, caption={Eliminación binaria sobreescribiendo metadatos físicos}]
+def eliminar_archivo(self, nameFile: str) -> bool:
+    if nameFile not in self.archivos_validos: 
+        print("No existe archivo con nombre:", nameFile)
+        return False 
+
+    byte_inicio = self.mapDirectorio.get(nameFile)
+    try:
+        with open(self.path, 'rb+') as file:
+            file.seek(byte_inicio)
+            marca_borrado = b'/' + b'#' * 14  
+            file.write(marca_borrado)
+    
+        del self.archivos_validos[nameFile]
+        del self.mapDirectorio[nameFile]
+        self.lista_archivos = [f for f in self.lista_archivos if f.name != nameFile]
+        print(f"Archivo '{nameFile}' eliminado exitosamente.")
+        return True
+    except Exception as e:
+        print(f"Error inesperado al escribir en el disco: {e}")
+        return False
+\end{lstlisting}
+    \item \textbf{Módulo de Consola (\texttt{FUSE.py}):} Implementa el ciclo de ejecucion principal a traves de la funcion\texttt{iniciar\_consola(ruta\_imagen)}, este modulo procesa el flujo de entrada de la terminal virtual, analizando los comandos introducidos por el usuario como (ls, cp, rm, exit) y realiza las instrucciones correspondientes al gestor del sistema.
+\end{itemize}
+
+
+
+\section{Descripción de la Concurrencia y Sincronización Utilizada}
+\begin{itemize}
+    \item \textbf{Ejecución multihilo:} La solución emplea la librería nativa threading para gestionar la concurrencia. El diseño de la terminal interactiva tipo FUSE delega las operaciones criticas de entrada y salida (I/O) a hilos de ejecución secundarios, asegurando de esta manera que los procesos independientes operen en paralelo sin bloquear el flujo principal.
+    \item \textbf{Protección y Exclusión Mutua:} La ejecución simultanea de comandos de lectura como ls, y de modificacion como eliminar_archivo(), pueden alterar de forma continua las estructuras de los datos en memoria (self.archivos\_validos y self.mapDirectorio), para prevenir condiciones de carrear y evitar la corrupción del disco emulado, se implementa protección en las secciones criticas, en especial, el acceso al descriptor físico del archivo en modo lectura/escritura ('rb+') se restringe mediante exclusión mutua asegurando así la consistencia e integridad transaccional de los datos.
+\end{itemize}
+
+\section{Ejemplos de Uso}
+El intérprete del simulador de terminal de comandos expone un prompt especializado bajo el formato \texttt{FiUnamFS \$ }. A continuación se detallan las pruebas hechas utilizando las imágenes reales del sistema:
+
+\begin{enumerate}
+    \item \textbf{Inicialización del Programa y Verificación del Entorno:}
+    Al arrancar el script se monta la imagen binaria mapeando su contenido inicial en la PC.
+    
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.8\textwidth]{evidencias/ARCHIVOS DE FIUNAMFS EN PC.png}
+        \caption{Ubicación física de los archivos de prueba del sistema desde la computadora.}
+        \label{fig:archivos_pc}
+    \end{figure}
+
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.8\textwidth]{evidencias/INICIALIZANDO PROGRAMA Y VALIDACION DEL SISTEMA DE ARCHIVOS..png}
+        \caption{Montaje exitoso, validación de FiUnamFS e inicialización del prompt interactivo.}
+        \label{fig:inicializacion}
+    \end{figure}
+
+    \newpage
+    \item \textbf{Mapeo de Directorio mediante el comando \texttt{ls}:}
+    Consulta y renderizado de las estructuras lógicas presentes en el clúster del directorio raíz.
+    
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.8\textwidth]{evidencias/USO DE COMANDO 'LS'.png}
+        \caption{Ejecución del comando 'ls' desplegando los archivos válidos junto con sus respectivos tamaños.}
+        \label{fig:comando_ls}
+    \end{figure}
+
+    \item \textbf{Transferencia Bilateral de Archivos mediante el comando \texttt{cp}:}
+    Permite el transporte de flujos de bytes de entrada y salida entre el host real y el cluster emulado.
+    
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.8\textwidth]{evidencias/USO DE 'CP' ARCHIVO DE MI COMPUTADORA FIUNAMFS.png}
+        \caption{Copia e inserción de un archivo externo desde el almacenamiento local hacia FiUnamFS.}
+        \label{fig:cp_hacia_fs}
+    \end{figure}
+
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.8\textwidth]{evidencias/USO DE 'CP' DE FIUNAMFS A COMPUTADORA.png}
+        \caption{Extracción exitosa de un archivo interno exportándolo directamente al sistema de archivos del computador.}
+        \label{fig:cp_desde_fs}
+    \end{figure}
+
+    \newpage
+    \item \textbf{Eliminación Lógica de Registros mediante el comando \texttt{rm}:}
+    Inyección de la firma de invalidación sobreescribiendo las cabeceras binarias mapeadas.
+    
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.8\textwidth]{evidencias/USO DE 'RM' ELIMINACION DEL ARCHIVO 'IMG_1757'.png}
+        \caption{Eliminación y remoción del archivo 'IMG\_1757' mediante el borrado lógico de metadatos.}
+        \label{fig:comando_rm}
+    \end{figure}
+\end{enumerate}
+\newpage
+\renewcommand{\refname}{Referencias}
+\begin{thebibliography}{9}
+
+\bibitem{wolf2015} 
+Wolf, Gunnar; Ruiz, Esteban; Bergero, Federico y Meza, Erwin. 
+\textit{Fundamentos de sistemas operativos}. 
+1ra edición. Ciudad de México: Universidad Nacional Autónoma de México, Instituto de Investigaciones Económicas, Facultad de Ingeniería, 2015.
+ISBN: 978-607-02-6544-0. Disponible en: \url{http://sistop.org/}
+
+\bibitem{python_struct}
+Python Software Foundation.
+\textit{struct — Interpret bytes as packed binary data}.
+Documentación oficial de Python 3.10. Disponible en: \url{https://docs.python.org/3/library/struct.html}
+
+\bibitem{python_threading}
+Python Software Foundation.
+\textit{threading — Thread-based parallelism}.
+Documentación oficial de Python 3.10. Disponible en: \url{https://docs.python.org/3/library/threading.html}
+
+\end{thebibliography}
+\end{document}
